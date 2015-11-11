@@ -523,6 +523,7 @@ int main (int argc, char **argv)
 	{
 		
 		string current_file;
+		string curr_img_file;
 		
 		VideoCapture video_capture;
 		
@@ -572,7 +573,7 @@ int main (int argc, char **argv)
 			curr_img++;
 			if(!input_image_files[f_n].empty())
 			{
-				string curr_img_file = input_image_files[f_n][curr_img];
+				curr_img_file = input_image_files[f_n][curr_img];
 				captured_image = imread(curr_img_file, -1);
 			}
 			else
@@ -594,8 +595,15 @@ int main (int argc, char **argv)
 		if (!gaze_output_files.empty())
 		{
 			gaze_output_file.open(gaze_output_files[f_n], ios_base::out);
-
-			gaze_output_file << "frame, confidence, success, x_0, y_0, z_0, x_1, y_1, z_1, x_h0, y_h0, z_h0, x_h1, y_h1, z_h1";
+			if (curr_img_file.size() > 0)
+			{
+				gaze_output_file << "x_0, y_0, z_0, x_1, y_1, z_1, x_h0, y_h0, z_h0, x_h1, y_h1, z_h1, target_x, target_y";
+			}
+			else
+			{
+				gaze_output_file << "frame, confidence, success, x_0, y_0, z_0, x_1, y_1, z_1, x_h0, y_h0, z_h0, x_h1, y_h1, z_h1";
+			}
+			
 			gaze_output_file << endl;
 		}
 
@@ -954,11 +962,45 @@ int main (int argc, char **argv)
 			if (!gaze_output_files.empty())
 			{
 				double confidence = 0.5 * (1 - detection_certainty);
-				gaze_output_file << frame_count + 1 << ", " << confidence << ", " << detection_success
-					<< ", " << gazeDirection0.x << ", " << gazeDirection0.y << ", " << gazeDirection0.z
-					<< ", " << gazeDirection1.x << ", " << gazeDirection1.y << ", " << gazeDirection1.z 
-					<< ", " << gazeDirection0_head.x << ", " << gazeDirection0_head.y << ", " << gazeDirection0_head.z
-					<< ", " << gazeDirection1_head.x << ", " << gazeDirection1_head.y << ", " << gazeDirection1_head.z << endl;
+				if (curr_img_file.size() > 0)
+				{
+					string filename = curr_img_file;
+					
+					// Remove directory if present.
+					// Do this before extension removal incase directory has a period character.
+					const size_t last_slash_idx = filename.find_last_of("\\/");
+					if (string::npos != last_slash_idx)
+					{
+					    filename.erase(0, last_slash_idx + 1);
+					}
+
+					// Remove extension if present.
+					const size_t period_idx = filename.rfind('.');
+					if (string::npos != period_idx)
+					{
+					    filename.erase(period_idx);
+					}
+
+					// Split filename into X and Y target coordinates
+					istringstream ss(filename);
+					string coordinateX;
+					string coordinateY;
+					getline(ss, coordinateX, '-');
+					getline(ss, coordinateY, '-');
+
+					gaze_output_file << gazeDirection0.x << ", " << gazeDirection0.y << ", " << gazeDirection0.z
+						<< ", " << gazeDirection1.x << ", " << gazeDirection1.y << ", " << gazeDirection1.z 
+						<< ", " << gazeDirection0_head.x << ", " << gazeDirection0_head.y << ", " << gazeDirection0_head.z
+						<< ", " << gazeDirection1_head.x << ", " << gazeDirection1_head.y << ", " << gazeDirection1_head.z
+						<< ", " << coordinateX << ", " << coordinateY << endl;
+				}
+				else {
+					gaze_output_file << frame_count + 1 << ", " << confidence << ", " << detection_success
+						<< ", " << gazeDirection0.x << ", " << gazeDirection0.y << ", " << gazeDirection0.z
+						<< ", " << gazeDirection1.x << ", " << gazeDirection1.y << ", " << gazeDirection1.z 
+						<< ", " << gazeDirection0_head.x << ", " << gazeDirection0_head.y << ", " << gazeDirection0_head.z
+						<< ", " << gazeDirection1_head.x << ", " << gazeDirection1_head.y << ", " << gazeDirection1_head.z << endl;
+				}
 			}
 
 
@@ -1014,7 +1056,7 @@ int main (int argc, char **argv)
 				curr_img++;
 				if(curr_img < (int)input_image_files[f_n].size())
 				{
-					string curr_img_file = input_image_files[f_n][curr_img];
+					curr_img_file = input_image_files[f_n][curr_img];
 					captured_image = imread(curr_img_file, -1);
 				}
 				else
